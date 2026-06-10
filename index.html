@@ -338,13 +338,27 @@ async function loadTasks() {
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s)[1]);
     const rows = json.table.rows || [];
     allTasks = rows.map(r => ({
-      'ID': r.c[0]?.v || '',
-      'Дата': r.c[1]?.f || r.c[1]?.v || '',
-      'Время': r.c[2]?.f || r.c[2]?.v || '',
-      'Текст': r.c[3]?.v || '',
-      'Статус': r.c[4]?.v || '',
-      'Контакт': r.c[7]?.v || ''
-    })).filter(r => r['Текст']);
+allTasks = rows.map(r => {
+      const rawDate = r.c[1]?.v || '';
+      let dateStr = '';
+      if (typeof rawDate === 'string' && rawDate.startsWith('Date(')) {
+        const parts = rawDate.replace('Date(','').replace(')','').split(',');
+        const y = parseInt(parts[0]);
+        const m = parseInt(parts[1]) + 1;
+        const d = parseInt(parts[2]);
+        dateStr = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      } else {
+        dateStr = r.c[1]?.f || String(rawDate).substring(0,10);
+      }
+      return {
+        'ID': r.c[0]?.v || '',
+        'Дата': dateStr,
+        'Время': r.c[2]?.f || r.c[2]?.v || '',
+        'Текст': r.c[3]?.v || '',
+        'Статус': r.c[4]?.v || '',
+        'Контакт': r.c[7]?.v || ''
+      };
+    }).filter(r => r['Текст']);
     renderTasks();
     updateStats();
   } catch(e) {
