@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Задачник">
+<title>Задачник</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; max-width: 430px; margin: 0 auto; min-height: 100vh; }
+
+/* Header */
+.header { background: #fff; padding: 16px 20px 12px; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10; }
+.header-top { display: flex; justify-content: space-between; align-items: center; }
+.greeting { font-size: 20px; font-weight: 600; }
+.header-date { font-size: 13px; color: #888; margin-top: 2px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.header-date:hover { color: #1D9E75; }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #eee; }
+.stat { text-align: center; }
+.stat-value { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+.stat-label { font-size: 11px; color: #888; margin-top: 1px; }
+
+/* Tabs */
+.tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; padding: 0 16px; overflow-x: auto; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { padding: 12px 16px; font-size: 14px; color: #888; white-space: nowrap; cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.active { color: #1D9E75; border-bottom-color: #1D9E75; font-weight: 500; }
+
+/* Content */
+.content { padding: 12px 16px; padding-bottom: 100px; }
+
+/* Calendar */
+.calendar { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid #eee; display: none; }
+.calendar.open { display: block; }
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.cal-title { font-weight: 600; font-size: 15px; }
+.cal-nav { background: none; border: none; font-size: 18px; cursor: pointer; color: #888; padding: 4px 8px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.cal-day-name { font-size: 11px; color: #888; padding: 4px 0; }
+.cal-day { font-size: 13px; padding: 6px 2px; cursor: pointer; border-radius: 8px; }
+.cal-day:hover { background: #f0f0f0; }
+.cal-day.today { background: #1D9E75; color: #fff; font-weight: 600; }
+.cal-day.selected { background: #e8f5f0; color: #1D9E75; font-weight: 600; }
+.cal-day.has-tasks::after { content: ''; display: block; width: 4px; height: 4px; background: #1D9E75; border-radius: 50%; margin: 2px auto 0; }
+.cal-day.today.has-tasks::after { background: #fff; }
+.cal-day.empty { cursor: default; }
+
+/* Section title */
+.section-title { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
+
+/* Tasks */
+.task-card { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; border: 1px solid #eee; display: flex; align-items: flex-start; gap: 12px; }
+.task-card.urgent { border-left: 3px solid #E24B4A; }
+.task-card.normal { border-left: 3px solid #1D9E75; }
+.task-card.someday { border-left: 3px solid #ccc; }
+.check-btn { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ddd; background: none; cursor: pointer; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; }
+.check-btn.done { background: #1D9E75; border-color: #1D9E75; }
+.check-btn.done::after { content: '✓'; color: #fff; font-size: 12px; }
+.task-body { flex: 1; min-width: 0; }
+.task-title { font-size: 15px; line-height: 1.4; }
+.task-title.done { text-decoration: line-through; color: #aaa; }
+.task-meta { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.task-time { font-size: 12px; color: #888; }
+.task-contact { font-size: 12px; color: #1D9E75; }
+.priority-badge { font-size: 11px; padding: 1px 7px; border-radius: 10px; }
+.priority-badge.urgent { background: #fef0f0; color: #E24B4A; }
+.priority-badge.normal { background: #e8f5f0; color: #1D9E75; }
+.priority-badge.someday { background: #f5f5f5; color: #888; }
+
+/* Empty state */
+.empty { text-align: center; padding: 40px 20px; color: #aaa; }
+.empty-icon { font-size: 40px; margin-bottom: 8px; }
+
+/* Knowledge */
+.knowledge-card { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; border: 1px solid #eee; }
+.knowledge-text { font-size: 14px; line-height: 1.5; }
+.knowledge-meta { font-size: 12px; color: #888; margin-top: 6px; }
+
+/* Input area */
+.input-area { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: #fff; border-top: 1px solid #eee; padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 8px; align-items: flex-end; }
+.input-wrap { flex: 1; background: #f5f5f5; border-radius: 20px; padding: 8px 14px; display: flex; align-items: center; }
+.input-wrap textarea { background: none; border: none; outline: none; font-size: 15px; width: 100%; resize: none; font-family: inherit; max-height: 80px; color: #1a1a1a; }
+.mic-btn { width: 42px; height: 42px; border-radius: 50%; background: #1D9E75; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mic-btn.recording { background: #E24B4A; animation: pulse 1s infinite; }
+.send-btn { width: 42px; height: 42px; border-radius: 50%; background: #1D9E75; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.send-btn:disabled { background: #ddd; }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-width: 430px; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+.modal-row { margin-bottom: 14px; }
+.modal-label { font-size: 13px; color: #888; margin-bottom: 4px; }
+.modal-input { width: 100%; border: 1px solid #eee; border-radius: 10px; padding: 10px 12px; font-size: 15px; font-family: inherit; outline: none; }
+.modal-input:focus { border-color: #1D9E75; }
+.priority-btns { display: flex; gap: 8px; }
+.priority-btn { flex: 1; padding: 8px; border: 1px solid #eee; border-radius: 10px; background: none; cursor: pointer; font-size: 13px; }
+.priority-btn.selected.urgent { background: #fef0f0; border-color: #E24B4A; color: #E24B4A; }
+.priority-btn.selected.normal { background: #e8f5f0; border-color: #1D9E75; color: #1D9E75; }
+.priority-btn.selected.someday { background: #f5f5f5; border-color: #888; color: #888; }
+.modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+.btn-cancel { flex: 1; padding: 12px; border: 1px solid #eee; border-radius: 12px; background: none; cursor: pointer; font-size: 15px; }
+.btn-save { flex: 2; padding: 12px; border: none; border-radius: 12px; background: #1D9E75; color: #fff; cursor: pointer; font-size: 15px; font-weight: 500; }
+
+/* Loading */
+.loading { text-align: center; padding: 20px; color: #888; font-size: 14px; }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #eee; border-top-color: #1D9E75; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Response bubble */
+.ai-response { background: #e8f5f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; font-size: 14px; line-height: 1.6; color: #1a1a1a; }
+.ai-response-label { font-size: 11px; color: #1D9E75; font-weight: 500; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="greeting">Задачник</div>
+    <span id="notif-icon" style="font-size:20px;cursor:pointer;">🔔</span>
+  </div>
+  <div class="header-date" id="dateToggle">
+    📅 <span id="dateLabel"></span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value" id="statTotal">—</div>
+    <div class="stat-label">Всего</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" id="statToday">—</div>
+    <div class="stat-label">Сегодня</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value" id="statDone">—</div>
+    <div class="stat-label">Готово</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="tasks">Задачи</div>
+  <div class="tab" data-tab="knowledge-work">Рабочие знания</div>
+  <div class="tab" data-tab="knowledge-home">Домашние знания</div>
+  <div class="tab" data-tab="search">Поиск</div>
+</div>
+
+<div class="content">
+
+  <!-- Calendar -->
+  <div class="calendar" id="calendar">
+    <div class="cal-header">
+      <button class="cal-nav" id="calPrev">‹</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="cal-nav" id="calNext">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <!-- Tasks tab -->
+  <div id="tab-tasks">
+    <div class="section-title" id="taskSectionTitle">Загрузка...</div>
+    <div id="taskList"></div>
+  </div>
+
+  <!-- Work knowledge tab -->
+  <div id="tab-knowledge-work" style="display:none;">
+    <div class="section-title">Рабочие знания</div>
+    <div id="workList"></div>
+  </div>
+
+  <!-- Home knowledge tab -->
+  <div id="tab-knowledge-home" style="display:none;">
+    <div class="section-title">Домашние знания</div>
+    <div id="homeList"></div>
+  </div>
+
+  <!-- Search tab -->
+  <div id="tab-search" style="display:none;">
+    <div style="margin-bottom:12px;">
+      <input type="text" id="searchInput" placeholder="Спроси что угодно..." style="width:100%;border:1px solid #eee;border-radius:12px;padding:12px 16px;font-size:15px;outline:none;font-family:inherit;">
+      <button id="searchBtn" style="width:100%;margin-top:8px;padding:12px;background:#1D9E75;color:#fff;border:none;border-radius:12px;font-size:15px;cursor:pointer;font-family:inherit;">Найти</button>
+    </div>
+    <div id="searchResult"></div>
+  </div>
+
+</div>
+
+<!-- Input area -->
+<div class="input-area">
+  <div class="input-wrap">
+    <textarea id="msgInput" placeholder="Напомни или спроси..." rows="1"></textarea>
+  </div>
+  <button class="mic-btn" id="micBtn" title="Голосовой ввод">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+  </button>
+  <button class="send-btn" id="sendBtn" title="Отправить">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+  </button>
+</div>
+
+<!-- Add task modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-title">Новая задача</div>
+    <div class="modal-row">
+      <div class="modal-label">Задача</div>
+      <textarea class="modal-input" id="modalText" rows="2" placeholder="Что нужно сделать?"></textarea>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Дата и время</div>
+      <div style="display:flex;gap:8px;">
+        <input type="date" class="modal-input" id="modalDate" style="flex:1;">
+        <input type="time" class="modal-input" id="modalTime" style="width:100px;">
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Контакт</div>
+      <input type="text" class="modal-input" id="modalContact" placeholder="Имя или телефон">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Приоритет</div>
+      <div class="priority-btns">
+        <button class="priority-btn urgent" data-priority="urgent">🔴 Срочно</button>
+        <button class="priority-btn normal selected normal" data-priority="normal">🟢 Обычно</button>
+        <button class="priority-btn someday" data-priority="someday">⚪ Когда-нибудь</button>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modalCancel">Отмена</button>
+      <button class="btn-save" id="modalSave">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// НАСТРОЙКИ — замени на свои
+// ============================================================
+const WEBHOOK_URL = 'https://YOUR_N8N_WEBHOOK_URL'; // вставишь позже
+const SHEETS_ID = '1xguEhitq0aKr5mw4jd35Z4f2q1rY0lMr1';
+// ============================================================
+
+let currentTab = 'tasks';
+let selectedDate = new Date();
+let calendarDate = new Date();
+let allTasks = [];
+let selectedPriority = 'normal';
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+
+// --- Dates ---
+const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+function formatDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function formatDisplayDate(d) {
+  const dayNames = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(d); target.setHours(0,0,0,0);
+  const diff = (target - today) / 86400000;
+  if (diff === 0) return 'Сегодня, ' + d.getDate() + ' ' + months[d.getMonth()].toLowerCase();
+  if (diff === 1) return 'Завтра, ' + d.getDate() + ' ' + months[d.getMonth()].toLowerCase();
+  if (diff === -1) return 'Вчера, ' + d.getDate() + ' ' + months[d.getMonth()].toLowerCase();
+  return d.getDate() + ' ' + months[d.getMonth()].toLowerCase();
+}
+
+document.getElementById('dateLabel').textContent = formatDisplayDate(selectedDate);
+
+// --- Calendar ---
+function renderCalendar() {
+  const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
+  document.getElementById('calTitle').textContent = months[m] + ' ' + y;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = days.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+  const first = new Date(y, m, 1);
+  let startDay = first.getDay(); if (startDay === 0) startDay = 7;
+  for (let i = 1; i < startDay; i++) grid.innerHTML += '<div class="cal-day empty"></div>';
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const todayStr = formatDate(new Date());
+  const selStr = formatDate(selectedDate);
+  const taskDates = new Set(allTasks.map(t => t['Дата']));
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    let cls = 'cal-day';
+    if (dateStr === todayStr) cls += ' today';
+    else if (dateStr === selStr) cls += ' selected';
+    if (taskDates.has(dateStr)) cls += ' has-tasks';
+    grid.innerHTML += `<div class="${cls}" data-date="${dateStr}">${d}</div>`;
+  }
+  grid.querySelectorAll('.cal-day[data-date]').forEach(el => {
+    el.addEventListener('click', () => {
+      selectedDate = new Date(el.dataset.date + 'T00:00:00');
+      document.getElementById('dateLabel').textContent = formatDisplayDate(selectedDate);
+      renderCalendar();
+      renderTasks();
+    });
+  });
+}
+
+document.getElementById('dateToggle').addEventListener('click', () => {
+  const cal = document.getElementById('calendar');
+  cal.classList.toggle('open');
+  if (cal.classList.contains('open')) renderCalendar();
+});
+document.getElementById('calPrev').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth()-1); renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth()+1); renderCalendar(); });
+
+// --- Tabs ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentTab = tab.dataset.tab;
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + currentTab).style.display = 'block';
+    if (currentTab === 'knowledge-work') loadKnowledge('work');
+    if (currentTab === 'knowledge-home') loadKnowledge('home');
+  });
+});
+
+// --- Load tasks from Google Sheets (публичный доступ) ---
+async function loadTasks() {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json&sheet=Напоминания`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s)[1]);
+    const rows = json.table.rows || [];
+    allTasks = rows.map(r => ({
+      'ID': r.c[0]?.v || '',
+      'Дата': r.c[1]?.f || r.c[1]?.v || '',
+      'Время': r.c[2]?.f || r.c[2]?.v || '',
+      'Текст': r.c[3]?.v || '',
+      'Статус': r.c[4]?.v || '',
+      'Контакт': r.c[7]?.v || ''
+    })).filter(r => r['Текст']);
+    renderTasks();
+    updateStats();
+  } catch(e) {
+    document.getElementById('taskList').innerHTML = '<div class="empty"><div>Подключи Google Sheets</div></div>';
+  }
+}
+
+function renderTasks() {
+  const selStr = formatDate(selectedDate);
+  const filtered = allTasks.filter(t => {
+    const d = t['Дата'];
+    if (!d) return false;
+    const dStr = typeof d === 'number' ? excelDateToStr(d) : String(d).substring(0,10);
+    return dStr === selStr;
+  });
+  document.getElementById('taskSectionTitle').textContent = formatDisplayDate(selectedDate) + ' · ' + filtered.length + ' задач';
+  if (filtered.length === 0) {
+    document.getElementById('taskList').innerHTML = '<div class="empty"><div class="empty-icon">✅</div><div>Задач нет</div></div>';
+    return;
+  }
+  document.getElementById('taskList').innerHTML = filtered.map(t => {
+    const done = t['Статус'] === 'выполнено';
+    const priority = t['Приоритет'] || 'normal';
+    return `<div class="task-card ${priority}">
+      <button class="check-btn ${done ? 'done' : ''}" data-id="${t['ID']}"></button>
+      <div class="task-body">
+        <div class="task-title ${done ? 'done' : ''}">${t['Текст']}</div>
+        <div class="task-meta">
+          ${t['Время'] ? `<span class="task-time">⏰ ${t['Время']}</span>` : ''}
+          ${t['Контакт'] ? `<span class="task-contact">👤 ${t['Контакт']}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function excelDateToStr(serial) {
+  const d = new Date((serial - 25569) * 86400 * 1000);
+  return formatDate(d);
+}
+
+function updateStats() {
+  const todayStr = formatDate(new Date());
+  const todayTasks = allTasks.filter(t => {
+    const d = t['Дата'];
+    if (!d) return false;
+    const dStr = typeof d === 'number' ? excelDateToStr(d) : String(d).substring(0,10);
+    return dStr === todayStr;
+  });
+  document.getElementById('statTotal').textContent = allTasks.length;
+  document.getElementById('statToday').textContent = todayTasks.length;
+  document.getElementById('statDone').textContent = allTasks.filter(t => t['Статус'] === 'выполнено').length;
+}
+
+// --- Load knowledge ---
+async function loadKnowledge(type) {
+  const sheetName = type === 'work' ? 'Рабочие знания' : 'Домашние знания';
+  const listId = type === 'work' ? 'workList' : 'homeList';
+  document.getElementById(listId).innerHTML = '<div class="loading"><span class="spinner"></span>Загрузка...</div>';
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s)[1]);
+    const rows = (json.table.rows || []).filter(r => r.c[3]?.v);
+    if (rows.length === 0) {
+      document.getElementById(listId).innerHTML = '<div class="empty"><div>Пусто</div></div>';
+      return;
+    }
+    document.getElementById(listId).innerHTML = rows.map(r => `
+      <div class="knowledge-card">
+        <div class="knowledge-text">${r.c[3].v}</div>
+        ${r.c[7]?.v ? `<div class="knowledge-meta">👤 ${r.c[7].v}</div>` : ''}
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById(listId).innerHTML = '<div class="empty">Ошибка загрузки</div>';
+  }
+}
+
+// --- Send message to n8n ---
+async function sendMessage(text) {
+  if (!text.trim()) return;
+  const input = document.getElementById('msgInput');
+  input.value = '';
+  input.style.height = 'auto';
+  const taskList = document.getElementById('taskList');
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'loading';
+  loadingEl.innerHTML = '<span class="spinner"></span>Обрабатываю...';
+  taskList.prepend(loadingEl);
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, chat_id: 'app_user' })
+    });
+    const data = await res.json();
+    loadingEl.remove();
+    if (data.reply) {
+      const bubble = document.createElement('div');
+      bubble.className = 'ai-response';
+      bubble.innerHTML = `<div class="ai-response-label">ИИ ответил</div>${data.reply}`;
+      taskList.prepend(bubble);
+      setTimeout(() => bubble.remove(), 8000);
+    }
+    loadTasks();
+  } catch(e) {
+    loadingEl.remove();
+    alert('Ошибка подключения к серверу');
+  }
+}
+
+document.getElementById('sendBtn').addEventListener('click', () => {
+  sendMessage(document.getElementById('msgInput').value);
+});
+document.getElementById('msgInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e.target.value); }
+});
+document.getElementById('msgInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+});
+
+// --- Voice input ---
+document.getElementById('micBtn').addEventListener('click', async () => {
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('audio', blob, 'voice.webm');
+        try {
+          const res = await fetch(WEBHOOK_URL + '/voice', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (data.text) document.getElementById('msgInput').value = data.text;
+        } catch(e) {}
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      document.getElementById('micBtn').classList.add('recording');
+    } catch(e) { alert('Нет доступа к микрофону'); }
+  } else {
+    mediaRecorder.stop();
+    isRecording = false;
+    document.getElementById('micBtn').classList.remove('recording');
+  }
+});
+
+// --- Search ---
+document.getElementById('searchBtn').addEventListener('click', async () => {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  document.getElementById('searchResult').innerHTML = '<div class="loading"><span class="spinner"></span>Ищу...</div>';
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: q, chat_id: 'app_user' })
+    });
+    const data = await res.json();
+    document.getElementById('searchResult').innerHTML = data.reply
+      ? `<div class="ai-response"><div class="ai-response-label">Результат</div>${data.reply}</div>`
+      : '<div class="empty">Ничего не найдено</div>';
+  } catch(e) {
+    document.getElementById('searchResult').innerHTML = '<div class="empty">Ошибка</div>';
+  }
+});
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('searchBtn').click();
+});
+
+// --- Priority buttons ---
+document.querySelectorAll('.priority-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedPriority = btn.dataset.priority;
+  });
+});
+
+// --- Modal ---
+document.getElementById('modalCancel').addEventListener('click', () => {
+  document.getElementById('taskModal').classList.remove('open');
+});
+document.getElementById('modalSave').addEventListener('click', async () => {
+  const text = document.getElementById('modalText').value.trim();
+  if (!text) return;
+  const date = document.getElementById('modalDate').value || formatDate(new Date());
+  const time = document.getElementById('modalTime').value || '09:00';
+  const contact = document.getElementById('modalContact').value.trim();
+  const msg = `${text}${contact ? ', контакт: ' + contact : ''}, дата: ${date}, время: ${time}, приоритет: ${selectedPriority}`;
+  document.getElementById('taskModal').classList.remove('open');
+  await sendMessage(msg);
+});
+
+// Set default date in modal
+document.getElementById('modalDate').value = formatDate(new Date());
+document.getElementById('modalTime').value = '09:00';
+
+// --- Init ---
+loadTasks();
+setInterval(loadTasks, 60000);
+</script>
+</body>
+</html>
