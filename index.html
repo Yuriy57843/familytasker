@@ -337,8 +337,7 @@ async function loadTasks() {
     const text = await res.text();
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\((.*)\)/s)[1]);
     const rows = json.table.rows || [];
-    allTasks = rows.map(r => ({
-allTasks = rows.map(r => {
+ allTasks = rows.map(r => {
       const rawDate = r.c[1]?.v || '';
       let dateStr = '';
       if (typeof rawDate === 'string' && rawDate.startsWith('Date(')) {
